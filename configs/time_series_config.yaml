@@ -1,0 +1,17 @@
+FRED:
+    CPIAUCSL:
+        name: CPI
+        log: false
+        diff: true
+        n_diffs: 2
+        diff_name: log_inflation_MoM
+    FEDFUNDS:
+        name: fed_rate
+        log: true
+        diff: true
+        n_diffs: 1
+    UNRATE:
+        name: Unemployment
+        log: false
+        diff: true
+        n_diffs: 1

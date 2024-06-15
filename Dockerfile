@@ -8,6 +8,5 @@ RUN pip install torch torchvision torchaudio --index-url https://download.pytorc
 COPY . /app
 WORKDIR /app
 EXPOSE 8000
-EXPOSE 5000
 CMD ["uvicorn", "src.app:app", "--host", "0.0.0.0", "--port", "8000"]
 

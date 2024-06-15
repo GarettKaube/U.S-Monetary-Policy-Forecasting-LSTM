@@ -4,10 +4,11 @@ import mlflow
 from pydantic import BaseModel
 from src.score import score
 from contextlib import asynccontextmanager
+import torch
 
 logging.basicConfig(format="%(asctime)s %(levelname)s %(name)s %(message)s", level=logging.INFO)
 
-tracking_uri = "http://127.0.0.1:8080/"
+tracking_uri = "http://127.0.0.1:5000/"
 seq_length = 3
 
 models = {}
@@ -30,16 +31,22 @@ class MLflowInstance:
         
 
     def get_pytorch_model(self):
+        """ Gets the LSTM
+        """
         model = mlflow.pytorch.load_model(
-            model_uri = f"models:/{self.model_name}"
+            model_uri = f"models:/{self.model_name}", 
+            dst_path="models/model",
+            map_location=torch.device('cpu'),
         )
         return model
     
 
     def get_scaler(self):
-
+        """ Gets the scaler
+        """
         scaler = mlflow.sklearn.load_model(
-            model_uri = f"models:/{self.scaler_name}"
+            model_uri = f"models:/{self.scaler_name}", 
+            dst_path="models/scaler"
         )
         return scaler
 
@@ -59,6 +66,7 @@ app = FastAPI(lifespan=setup)
 
 class Request(BaseModel):
     n_periods: int | None = 1
+    round_untransformed_forecasts: bool
 
 
 def forecast_period(n_periods: str = None):
@@ -92,11 +100,12 @@ async def return_forecasts(request:Request):
     model, scaler = await get_model()
 
     # Get untransformed and transformed forecasts.
-    forecasts, tf, mom, yoy = score(model, scaler, seq_length, n_periods)
+    forecasts, tf, mom, yoy = score(model, scaler, seq_length, n_periods, 
+                                    request.round_untransformed_forecasts)
     tf = tf.to_dict()
 
     result["request"] = request.model_dump()
-    result["Untransformed forecasts"] = forecasts
+    result["Raw_forecasts"] = forecasts
     result['Forecasts'] = tf
     result["MoM_Inflation"] = mom
     result["YoY_Inflation"] = yoy

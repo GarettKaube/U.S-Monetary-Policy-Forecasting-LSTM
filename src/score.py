@@ -78,9 +78,9 @@ def generate_latest_prediction(forecasts, scaler):
     
     most_recent = data_diff.iloc[-2:][["CPI", "fed_rate", "Unemployment"]]
     most_recent_logs = most_recent.copy()
-
+    
     # Log transform data so we can add the forecasts to them
-    most_recent_logs["fed_rate"] = np.exp(np.log(most_recent_logs["fed_rate"]))
+    most_recent_logs["fed_rate"] = np.log(most_recent_logs["fed_rate"])
     untransformed_forecasts = []
     for forecast in forecasts[0]:
         # Untransform forecasts and add them to the latest observation 
@@ -89,8 +89,11 @@ def generate_latest_prediction(forecasts, scaler):
         forecast = scaler.inverse_transform(
             forecast.unsqueeze(dim=0).cpu().numpy()
         )
-        prediction = forecast + (most_recent_logs.iloc[[-1],:].mul({"CPI": 2, "fed_rate":1, "Unemployment":1})  
-                                               - [most_recent_logs.iloc[-2]["CPI"].item(), 0, 0])
+
+        prediction = forecast + (most_recent_logs.iloc[[-1],:]\
+                                 .mul({"CPI": 2, "fed_rate":1, "Unemployment":1})  
+                                - [most_recent_logs.iloc[-2]["CPI"].item(), 0, 0]
+                                )
         
         increment = most_recent_logs.index[-1] + pd.DateOffset(months=1)
         
@@ -99,7 +102,7 @@ def generate_latest_prediction(forecasts, scaler):
         
         # undo logs
         prediction["CPI"] =(prediction["CPI"]*(lambda_) + 1)**(1/lambda_)
-        
+        prediction["fed_rate"] = np.exp(prediction["fed_rate"])
         untransformed_forecasts.append(prediction)
 
     return pd.concat(untransformed_forecasts, axis=0)
@@ -140,7 +143,7 @@ def calculate_inflation(predictions, untransformed_data, mode="both"):
         return inflation_mom_list, inflation_yoy_list
 
 
-def score(model, scaler, seq_length, n_periods):
+def score(model, scaler, seq_length, n_periods, round_forecasts):
     """ Generates raw forecasts, untransformed forecasts, MoM and YoY inflation.
 
     Parameters
@@ -153,6 +156,8 @@ def score(model, scaler, seq_length, n_periods):
       Length of the sequence used in the model
     n_periods : int
       number of periods to forecast into the future
+    round_forecasts: bool
+      round untransformed forecasts or not
     
     Returns
     -------
@@ -181,16 +186,25 @@ def score(model, scaler, seq_length, n_periods):
         scaler.transform(most_recent_diff)
     ).to(device).unsqueeze(dim=0)
     
+    
     # Raw forecasts
-    forecasts = generate_forecasts(data, n_periods)
+    forecasts = generate_forecasts(data, model, n_periods)
+    
     # Untransformed forecasts
-    tf = generate_latest_prediction(forecasts, model, scaler)
+    tf = generate_latest_prediction(forecasts, scaler)
     
     # Untransform CPI
     untransformed = data_diff.copy()
     untransformed["CPI"] = inv_boxcox(untransformed["CPI"], lambda_)
 
     mom, yoy = calculate_inflation(tf, untransformed, mode="both")
+    
+    if round_forecasts:
+        round_predictions(tf)
+        mom = [round(x, 2) for x in mom]
+        yoy = [round(x, 2) for x in yoy]
+        
+
     return forecasts.cpu().numpy().tolist(), tf, mom, yoy
     
 

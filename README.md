@@ -7,7 +7,7 @@ Parameter tuning was done using Optuna's Bayesian Optimization.
 Model development is contained in the notebook while "src/" folder contains code for the FastAPI endpoint.
 
 A Dockerfile is also available so the FastAPI endpoint can be run in a container.
-A Dockerfile and docker compose is also available for setting up a MLflow server in Docker.
+A Dockerfile and Docker compose is also available for setting up a MLflow server in Docker.
 
 **Notes**: 
 

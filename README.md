@@ -1,8 +1,14 @@
 # Monetary-Policy-Forecasting-LSTM
 
-LSTM model and web endpoint built with PyTorch and FastAPI for multivariate forecasting inflation, unemployment, and the Federal Funds effective rate.
-The model was compared to a baseline vector autoregression which LSTM performed better on the validation set by around 8-9%.
-Parameter tuning was done using Optuna's Bayesian Optimization.
+Neural network with LSTM cells and web endpoint built with PyTorch and FastAPI for multivariate forecasting inflation, unemployment, and the Federal Funds effective rate. Right now, these three variables may not be enough as Okun's law fails when inflation expectations beome anchored.
+The model was compared to a baseline vector autoregression which RNN's with LSTM cells performed better on the validation set by around 8-9%.
+Parameter tuning was done using Optuna's Bayesian Optimization. The data was first differenced and inflation was Box-Cox transformed to stabalize variance. This was done primarily for the VAR as it typically requires stationary data. The data was kept in this form for the RNN's for easy comparison in performance. the RNN's though, could potentially perform better on undifferenced data as we lose long-term dependencies when we difference the data. This is something to explore more.
+
+Later, variational inference with Pyro was used to estimate a Bayesian RNN which performs a bit better than vannila and has the bonus advantage of forecast uncertainty.
+Plot of differenced inflation forecasts on validation set using posterior predictive from the BRNN:
+![output](https://github.com/user-attachments/assets/55b59536-184c-46e5-97fe-5d625603b56a)
+
+
 
 Model development is contained in the notebook while "src/" folder contains code for the FastAPI endpoint.
 
